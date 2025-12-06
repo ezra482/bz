@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模拟电脑系统</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 图标 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .window-drag {
+                -webkit-app-region: drag;
+            }
+            .window-no-drag {
+                -webkit-app-region: no-drag;
+            }
+            .text-shadow {
+                text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            }
+            .desktop-icon {
+                transition: transform 0.1s ease, opacity 0.1s ease;
+            }
+            .desktop-icon:hover {
+                transform: scale(1.05);
+                opacity: 0.9;
+            }
+            .window {
+                transition: all 0.2s ease;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            }
+            .taskbar-icon-active {
+                border-bottom: 2px solid white;
+                background-color: rgba(255,255,255,0.2);
+            }
+        }
+    </style>
+    <script>
+        // Tailwind 配置
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        windows: {
+                            blue: '#0078d7',
+                            gray: '#2b2b2b',
+                            lightgray: '#f0f0f0',
+                            taskbar: '#1a1a1a',
+                            start: '#303030'
+                        }
+                    },
+                    fontFamily: {
+                        system: ['Segoe UI', 'Roboto', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="m-0 p-0 overflow-hidden font-system bg-[url('https://picsum.photos/id/1048/1920/1080')] bg-cover bg-center">
+    <!-- 桌面层 -->
+    <div id="desktop" class="w-screen h-screen relative">
+        <!-- 桌面图标 -->
+        <div class="grid grid-cols-auto gap-6 p-8 pt-4">
+            <!-- 此电脑 -->
+            <div class="desktop-icon w-20 text-center text-white cursor-pointer" onclick="openWindow('file-explorer')">
+                <i class="fas fa-desktop text-5xl"></i>
+                <p class="mt-2 text-shadow">此电脑</p>
+            </div>
+            <!-- 浏览器 -->
+            <div class="desktop-icon w-20 text-center text-white cursor-pointer" onclick="openWindow('browser')">
+                <i class="fas fa-chrome text-5xl"></i>
+                <p class="mt-2 text-shadow">浏览器</p>
+            </div>
+            <!-- 记事本 -->
+            <div class="desktop-icon w-20 text-center text-white cursor-pointer" onclick="openWindow('notepad')">
+                <i class="fas fa-file-alt text-5xl"></i>
+                <p class="mt-2 text-shadow">记事本</p>
+            </div>
+            <!-- 终端 -->
+            <div class="desktop-icon w-20 text-center text-white cursor-pointer" onclick="openWindow('terminal')">
+                <i class="fas fa-terminal text-5xl"></i>
+                <p class="mt-2 text-shadow">终端</p>
+            </div>
+            <!-- 计算器 -->
+            <div class="desktop-icon w-20 text-center text-white cursor-pointer" onclick="openWindow('calculator')">
+                <i class="fas fa-calculator text-5xl"></i>
+                <p class="mt-2 text-shadow">计算器</p>
+            </div>
+            <!-- 设置 -->
+            <div class="desktop-icon w-20 text-center text-white cursor-pointer" onclick="openWindow('settings')">
+                <i class="fas fa-cog text-5xl"></i>
+                <p class="mt-2 text-shadow">设置</p>
+            </div>
+        </div>
+
+        <!-- 窗口容器 -->
+        <div id="window-container" class="absolute top-0 left-0 w-full h-full pointer-events-none">
+            <!-- 文件管理器窗口 -->
+            <div id="file-explorer" class="window hidden pointer-events-auto absolute top-20 left-20 w-[700px] h-[500px] bg-white rounded-t-md border border-gray-300">
+                <!-- 窗口标题栏 -->
+                <div class="window-drag bg-windows-blue text-white px-4 py-2 flex justify-between items-center rounded-t-md">
+                    <div class="flex items-center">
+                        <i class="fas fa-desktop mr-2"></i>
+                        <span>此电脑</span>
+                    </div>
+                    <div class="window-no-drag flex gap-2">
+                        <button onclick="minimizeWindow('file-explorer')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <button onclick="maximizeWindow('file-explorer')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-expand text-xs"></i>
+                        </button>
+                        <button onclick="closeWindow('file-explorer')" class="w-8 h-8 flex items-center justify-center hover:bg-red-500 rounded">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- 窗口内容 -->
+                <div class="p-4 h-[calc(100%-40px)] overflow-auto">
+                    <div class="grid grid-cols-4 gap-4">
+                        <!-- 磁盘分区 -->
+                        <div class="border border-gray-200 p-4 rounded text-center hover:bg-gray-100 cursor-pointer">
+                            <i class="fas fa-hard-drive text-4xl text-windows-blue"></i>
+                            <p class="mt-2 font-medium">C盘</p>
+                            <p class="text-sm text-gray-600">100GB / 256GB</p>
+                        </div>
+                        <div class="border border-gray-200 p-4 rounded text-center hover:bg-gray-100 cursor-pointer">
+                            <i class="fas fa-hard-drive text-4xl text-green-500"></i>
+                            <p class="mt-2 font-medium">D盘</p>
+                            <p class="text-sm text-gray-600">200GB / 512GB</p>
+                        </div>
+                        <div class="border border-gray-200 p-4 rounded text-center hover:bg-gray-100 cursor-pointer">
+                            <i class="fas fa-hard-drive text-4xl text-yellow-500"></i>
+                            <p class="mt-2 font-medium">E盘</p>
+                            <p class="text-sm text-gray-600">150GB / 512GB</p>
+                        </div>
+                        <div class="border border-gray-200 p-4 rounded text-center hover:bg-gray-100 cursor-pointer">
+                            <i class="fas fa-usb text-4xl text-purple-500"></i>
+                            <p class="mt-2 font-medium">U盘</p>
+                            <p class="text-sm text-gray-600">16GB / 32GB</p>
+                        </div>
+                    </div>
+                    <div class="mt-6">
+                        <h3 class="font-medium text-lg mb-3">最近文件</h3>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="border border-gray-200 p-3 rounded hover:bg-gray-100 cursor-pointer flex items-center gap-3">
+                                <i class="fas fa-file-text text-2xl text-blue-500"></i>
+                                <div>
+                                    <p class="font-medium">文档1.txt</p>
+                                    <p class="text-xs text-gray-600">2KB · 2025/12/06</p>
+                                </div>
+                            </div>
+                            <div class="border border-gray-200 p-3 rounded hover:bg-gray-100 cursor-pointer flex items-center gap-3">
+                                <i class="fas fa-file-image text-2xl text-red-500"></i>
+                                <div>
+                                    <p class="font-medium">图片1.jpg</p>
+                                    <p class="text-xs text-gray-600">1.2MB · 2025/12/05</p>
+                                </div>
+                            </div>
+                            <div class="border border-gray-200 p-3 rounded hover:bg-gray-100 cursor-pointer flex items-center gap-3">
+                                <i class="fas fa-file-excel text-2xl text-green-500"></i>
+                                <div>
+                                    <p class="font-medium">表格1.xlsx</p>
+                                    <p class="text-xs text-gray-600">5KB · 2025/12/04</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 浏览器窗口 -->
+            <div id="browser" class="window hidden pointer-events-auto absolute top-30 left-30 w-[800px] h-[600px] bg-white rounded-t-md border border-gray-300">
+                <!-- 窗口标题栏 -->
+                <div class="window-drag bg-windows-blue text-white px-4 py-2 flex justify-between items-center rounded-t-md">
+                    <div class="flex items-center">
+                        <i class="fas fa-chrome mr-2"></i>
+                        <span>浏览器</span>
+                    </div>
+                    <div class="window-no-drag flex gap-2">
+                        <button onclick="minimizeWindow('browser')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <button onclick="maximizeWindow('browser')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-expand text-xs"></i>
+                        </button>
+                        <button onclick="closeWindow('browser')" class="w-8 h-8 flex items-center justify-center hover:bg-red-500 rounded">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- 浏览器导航栏 -->
+                <div class="bg-gray-100 px-4 py-2 flex items-center gap-2">
+                    <button class="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded">
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
+                    <button class="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded">
+                        <i class="fas fa-refresh"></i>
+                    </button>
+                    <input id="browser-url" type="text" class="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:border-windows-blue" placeholder="输入网址..." value="https://www.baidu.com">
+                    <button onclick="browserNavigate()" class="px-4 py-1 bg-windows-blue text-white rounded hover:bg-windows-blue/90">
+                        访问
+                    </button>
+                </div>
+                <!-- 浏览器内容区 -->
+                <div id="browser-content" class="h-[calc(100%-88px)] overflow-auto p-4">
+                    <div class="text-center p-10">
+                        <img src="https://www.baidu.com/img/PCtm_d9c8750bed0b3c7d089fa7d55720d6cf.png" alt="百度logo" class="mx-auto mb-4">
+                        <div class="flex justify-center">
+                            <input type="text" class="w-[500px] px-4 py-2 border border-gray-300 rounded-l-full focus:outline-none focus:border-windows-blue" placeholder="百度一下，你就知道">
+                            <button class="px-6 py-2 bg-windows-blue text-white rounded-r-full hover:bg-windows-blue/90">
+                                百度一下
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 记事本窗口 -->
+            <div id="notepad" class="window hidden pointer-events-auto absolute top-40 left-40 w-[600px] h-[400px] bg-white rounded-t-md border border-gray-300">
+                <!-- 窗口标题栏 -->
+                <div class="window-drag bg-windows-blue text-white px-4 py-2 flex justify-between items-center rounded-t-md">
+                    <div class="flex items-center">
+                        <i class="fas fa-file-alt mr-2"></i>
+                        <span>记事本 - 无标题</span>
+                    </div>
+                    <div class="window-no-drag flex gap-2">
+                        <button onclick="minimizeWindow('notepad')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <button onclick="maximizeWindow('notepad')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-expand text-xs"></i>
+                        </button>
+                        <button onclick="closeWindow('notepad')" class="w-8 h-8 flex items-center justify-center hover:bg-red-500 rounded">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- 记事本工具栏 -->
+                <div class="bg-gray-100 px-4 py-1 flex gap-3">
+                    <button onclick="saveNotepad()" class="px-3 py-1 bg-windows-blue text-white rounded hover:bg-windows-blue/90">
+                        <i class="fas fa-save mr-1"></i> 保存
+                    </button>
+                    <button onclick="clearNotepad()" class="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">
+                        <i class="fas fa-trash mr-1"></i> 清空
+                    </button>
+                </div>
+                <!-- 记事本内容区 -->
+                <textarea id="notepad-content" class="w-full h-[calc(100%-80px)] p-4 border-0 focus:outline-none resize-none" placeholder="在这里输入文本..."></textarea>
+            </div>
+
+            <!-- 终端窗口 -->
+            <div id="terminal" class="window hidden pointer-events-auto absolute top-20 left-60 w-[700px] h-[450px] bg-black rounded-t-md border border-gray-800">
+                <!-- 窗口标题栏 -->
+                <div class="window-drag bg-windows-gray text-white px-4 py-2 flex justify-between items-center rounded-t-md">
+                    <div class="flex items-center">
+                        <i class="fas fa-terminal mr-2"></i>
+                        <span>终端</span>
+                    </div>
+                    <div class="window-no-drag flex gap-2">
+                        <button onclick="minimizeWindow('terminal')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <button onclick="maximizeWindow('terminal')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-expand text-xs"></i>
+                        </button>
+                        <button onclick="closeWindow('terminal')" class="w-8 h-8 flex items-center justify-center hover:bg-red-500 rounded">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- 终端内容区 -->
+                <div id="terminal-content" class="w-full h-[calc(100%-40px)] text-green-400 p-4 font-mono text-sm overflow-auto">
+                    <div>> 欢迎使用模拟终端</div>
+                    <div>> 输入 "help" 查看可用命令</div>
+                </div>
+                <!-- 终端输入区 -->
+                <div class="absolute bottom-0 left-0 w-full bg-black border-t border-gray-800 p-2 flex">
+                    <span class="text-green-400 font-mono mr-2">></span>
+                    <input id="terminal-input" type="text" class="flex-1 bg-transparent text-green-400 border-0 focus:outline-none font-mono" onkeydown="if(event.key === 'Enter') terminalExecute()">
+                </div>
+            </div>
+
+            <!-- 计算器窗口 -->
+            <div id="calculator" class="window hidden pointer-events-auto absolute top-50 left-20 w-[350px] h-[450px] bg-white rounded-t-md border border-gray-300">
+                <!-- 窗口标题栏 -->
+                <div class="window-drag bg-windows-blue text-white px-4 py-2 flex justify-between items-center rounded-t-md">
+                    <div class="flex items-center">
+                        <i class="fas fa-calculator mr-2"></i>
+                        <span>计算器</span>
+                    </div>
+                    <div class="window-no-drag flex gap-2">
+                        <button onclick="minimizeWindow('calculator')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <button onclick="maximizeWindow('calculator')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-expand text-xs"></i>
+                        </button>
+                        <button onclick="closeWindow('calculator')" class="w-8 h-8 flex items-center justify-center hover:bg-red-500 rounded">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- 计算器显示区 -->
+                <div class="bg-gray-100 h-20 flex items-end justify-end p-4">
+                    <input id="calc-display" type="text" class="w-full text-right text-3xl border-0 bg-transparent focus:outline-none" readonly>
+                </div>
+                <!-- 计算器按键区 -->
+                <div class="grid grid-cols-4 gap-1 p-2 h-[calc(100%-80px)]">
+                    <button onclick="calcInput('AC')" class="bg-red-500 text-white rounded hover:bg-red-600">AC</button>
+                    <button onclick="calcInput('DEL')" class="bg-gray-200 rounded hover:bg-gray-300">DEL</button>
+                    <button onclick="calcInput('%')" class="bg-gray-200 rounded hover:bg-gray-300">%</button>
+                    <button onclick="calcInput('/')" class="bg-orange-500 text-white rounded hover:bg-orange-600">÷</button>
+                    
+                    <button onclick="calcInput('7')" class="bg-gray-100 rounded hover:bg-gray-200">7</button>
+                    <button onclick="calcInput('8')" class="bg-gray-100 rounded hover:bg-gray-200">8</button>
+                    <button onclick="calcInput('9')" class="bg-gray-100 rounded hover:bg-gray-200">9</button>
+                    <button onclick="calcInput('*')" class="bg-orange-500 text-white rounded hover:bg-orange-600">×</button>
+                    
+                    <button onclick="calcInput('4')" class="bg-gray-100 rounded hover:bg-gray-200">4</button>
+                    <button onclick="calcInput('5')" class="bg-gray-100 rounded hover:bg-gray-200">5</button>
+                    <button onclick="calcInput('6')" class="bg-gray-100 rounded hover:bg-gray-200">6</button>
+                    <button onclick="calcInput('-')" class="bg-orange-500 text-white rounded hover:bg-orange-600">−</button>
+                    
+                    <button onclick="calcInput('1')" class="bg-gray-100 rounded hover:bg-gray-200">1</button>
+                    <button onclick="calcInput('2')" class="bg-gray-100 rounded hover:bg-gray-200">2</button>
+                    <button onclick="calcInput('3')" class="bg-gray-100 rounded hover:bg-gray-200">3</button>
+                    <button onclick="calcInput('+')" class="bg-orange-500 text-white rounded hover:bg-orange-600">+</button>
+                    
+                    <button onclick="calcInput('00')" class="bg-gray-100 rounded hover:bg-gray-200">00</button>
+                    <button onclick="calcInput('0')" class="bg-gray-100 rounded hover:bg-gray-200">0</button>
+                    <button onclick="calcInput('.')" class="bg-gray-100 rounded hover:bg-gray-200">.</button>
+                    <button onclick="calcCalculate()" class="bg-orange-500 text-white rounded hover:bg-orange-600">=</button>
+                </div>
+            </div>
+
+            <!-- 设置窗口 -->
+            <div id="settings" class="window hidden pointer-events-auto absolute top-30 left-80 w-[600px] h-[500px] bg-white rounded-t-md border border-gray-300">
+                <!-- 窗口标题栏 -->
+                <div class="window-drag bg-windows-blue text-white px-4 py-2 flex justify-between items-center rounded-t-md">
+                    <div class="flex items-center">
+                        <i class="fas fa-cog mr-2"></i>
+                        <span>设置</span>
+                    </div>
+                    <div class="window-no-drag flex gap-2">
+                        <button onclick="minimizeWindow('settings')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-minus text-xs"></i>
+                        </button>
+                        <button onclick="maximizeWindow('settings')" class="w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded">
+                            <i class="fas fa-expand text-xs"></i>
+                        </button>
+                        <button onclick="closeWindow('settings')" class="w-8 h-8 flex items-center justify-center hover:bg-red-500 rounded">
+                            <i class="fas fa-times text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- 设置内容区 -->
+                <div class="flex h-[calc(100%-40px)]">
+                    <!-- 设置侧边栏 -->
+                    <div class="w-40 bg-gray-100 p-4">
+                        <div class="font-medium mb-4 cursor-pointer text-windows-blue">个性化</div>
+                        <div class="font-medium mb-4 cursor-pointer hover:text-gray-600">系统</div>
+                        <div class="font-medium mb-4 cursor-pointer hover:text-gray-600">设备</div>
+                        <div class="font-medium mb-4 cursor-pointer hover:text-gray-600">网络</div>
+                    </div>
+                    <!-- 设置主内容 -->
+                    <div class="flex-1 p-6 overflow-auto">
+                        <h3 class="text-xl font-medium mb-6">个性化设置</h3>
+                        
+                        <div class="mb-8">
+                            <h4 class="font-medium mb-3">桌面背景</h4>
+                            <div class="grid grid-cols-3 gap-4">
+                                <img src="https://picsum.photos/id/1048/300/200" alt="背景1" class="w-full h-24 object-cover rounded cursor-pointer hover:ring-2 ring-windows-blue" onclick="changeDesktopBg('https://picsum.photos/id/1048/1920/1080')">
+                                <img src="https://picsum.photos/id/1015/300/200" alt="背景2" class="w-full h-24 object-cover rounded cursor-pointer hover:ring-2 ring-windows-blue" onclick="changeDesktopBg('https://picsum.photos/id/1015/1920/1080')">
+                                <img src="https://picsum.photos/id/1039/300/200" alt="背景3" class="w-full h-24 object-cover rounded cursor-pointer hover:ring-2 ring-windows-blue" onclick="changeDesktopBg('https://picsum.photos/id/1039/1920/1080')">
+                            </div>
+                        </div>
+
+                        <div class="mb-8">
+                            <h4 class="font-medium mb-3">主题颜色</h4>
+                            <div class="flex gap-4">
+                                <div class="w-10 h-10 bg-windows-blue rounded-full cursor-pointer hover:ring-2 ring-gray-400" onclick="changeThemeColor('#0078d7')"></div>
+                                <div class="w-10 h-10 bg-red-600 rounded-full cursor-pointer hover:ring-2 ring-gray-400" onclick="changeThemeColor('#dc2626')"></div>
+                                <div class="w-10 h-10 bg-green-600 rounded-full cursor-pointer hover:ring-2 ring-gray-400" onclick="changeThemeColor('#16a34a')"></div>
+                                <div class="w-10 h-10 bg-purple-600 rounded-full cursor-pointer hover:ring-2 ring-gray-400" onclick="changeThemeColor('#9333ea')"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="font-medium mb-3">声音设置</h4>
+                            <div class="flex items-center gap-4">
+                                <span>音量</span>
+                                <input type="range" min="0" max="100" value="70" class="w-48">
+                                <span>70%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务栏 -->
+    <div class="fixed bottom-0 left-0 w-full bg-windows-taskbar text-white h-14 flex items-center px-2 z-50">
+        <!-- 开始按钮 -->
+        <button id="start-button" onclick="toggleStartMenu()" class="h-10 w-10 flex items-center justify-center rounded hover:bg-white/20 mr-2">
+            <i class="fas fa-windows text-xl"></i>
+        </button>
+
+        <!-- 任务栏图标 -->
+        <div class="flex gap-1">
+            <button onclick="openWindow('file-explorer')" class="taskbar-icon h-10 w-10 flex items-center justify-center rounded hover:bg-white/20">
+                <i class="fas fa-desktop"></i>
+            </button>
+            <button onclick="openWindow('browser')" class="taskbar-icon h-10 w-10 flex items-center justify-center rounded hover:bg-white/20">
+                <i class="fas fa-chrome"></i>
+            </button>
+            <button onclick="openWindow('notepad')" class="taskbar-icon h-10 w-10 flex items-center justify-center rounded hover:bg-white/20">
+                <i class="fas fa-file-alt"></i>
+            </button>
+            <button onclick="openWindow('terminal')" class="taskbar-icon h-10 w-10 flex items-center justify-center rounded hover:bg-white/20">
+                <i class="fas fa-terminal"></i>
+            </button>
+        </div>
+
+        <!-- 右侧系统托盘 -->
+        <div class="ml-auto flex items-center gap-3 pr-4">
+            <!-- 音量 -->
+            <button class="h-10 w-10 flex items-center justify-center rounded hover:bg-white/20">
+                <i class="fas fa-volume-up"></i>
+            </button>
+            <!-- 网络 -->
+            <button class="h-10 w-10 flex items-center justify-center rounded hover:bg-white/20">
+                <i class="fas fa-wifi"></i>
+            </button>
+            <!-- 时钟 -->
+            <div id="system-clock" class="text-sm text-center">
+                <div id="clock-time">12:00:00</div>
+                <div id="clock-date">2025/12/06</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 开始菜单 -->
+    <div id="start-menu" class="hidden fixed bottom-14 left-0 w-80 bg-windows-start text-white rounded-t-lg shadow-lg overflow-hidden z-60">
+        <!-- 开始菜单顶部 -->
+        <div class="bg-windows-blue p-4">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-user-circle text-4xl"></i>
+                <div>
+                    <div class="font-medium">用户</div>
+                    <div class="text-xs opacity-80">Administrator</div>
+                </div>
+            </div>
+        </div>
+        <!-- 开始菜单应用列表 -->
+        <div class="p-2 max-h-[600px] overflow-auto">
+            <div class="flex items-center gap-3 p-2 hover:bg-white/10 rounded cursor-pointer" onclick="openWindow('file-explorer')">
+                <i class="fas fa-desktop w-6 text-center"></i>
+                <span>此电脑</span>
+            </div>
+            <div class="flex items-center gap-3 p-2 hover:bg-white/10 rounded cursor-pointer" onclick="openWindow('browser')">
+                <i class="fas fa-chrome w-6 text-center"></i>
+                <span>浏览器</span>
+            </div>
+            <div class="flex items-center gap-3 p-2 hover:bg-white/10 rounded cursor-pointer" onclick="openWindow('notepad')">
+                <i class="fas fa-file-alt w-6 text-center"></i>
+                <span>记事本</span>
+            </div>
+            <div class="flex items-center gap-3 p-2 hover:bg-white/10 rounded cursor-pointer" onclick="openWindow('terminal')">
+                <i class="fas fa-terminal w-6 text-center"></i>
+                <span>终端</span>
+            </div>
+            <div class="flex items-center gap-3 p-2 hover:bg-white/10 rounded cursor-pointer" onclick="openWindow('calculator')">
+                <i class="fas fa-calculator w-6 text-center"></i>
+                <span>计算器</span>
+            </div>
+            <div class="flex items-center gap-3 p-2 hover:bg-white/10 rounded cursor-pointer" onclick="openWindow('settings')">
+                <i class="fas fa-cog w-6 text-center"></i>
+                <span>设置</span>
+            </div>
+            <hr class="my-2 border-gray-600">
+            <div class="flex items-center gap-3 p-2 hover:bg-red-500/20 rounded cursor-pointer">
+                <i class="fas fa-power-off w-6 text-center"></i>
+                <span>关机</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let activeWindows = {};
+        let currentZIndex = 100;
+        let calcValue = '';
+
+        // 初始化时钟
+        function updateClock() {
+            const now = new Date();
+            const time = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const date = now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            document.getElementById('clock-time').textContent = time;
+            document.getElementById('clock-date').textContent = date.replace(/\//g, '-');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // 开始菜单切换
+        function toggleStartMenu() {
+            const startMenu = document.getElementById('start-menu');
+            startMenu.classList.toggle('hidden');
+        }
+
+        // 点击空白处关闭开始菜单
+        document.addEventListener('click', (e) => {
+            const startMenu = document.getElementById('start-menu');
+            const startButton = document.getElementById('start-button');
+            if (!startMenu.classList.contains('hidden') && 
+                !startMenu.contains(e.target) && 
+                e.target !== startButton) {
+                startMenu.classList.add('hidden');
+            }
+        });
+
+        // 打开窗口
+        function openWindow(windowId) {
+            const window = document.getElementById(windowId);
+            if (window.classList.contains('hidden')) {
+                window.classList.remove('hidden');
+                // 提升窗口层级
+                currentZIndex++;
+                window.style.zIndex = currentZIndex;
+                // 标记为活动窗口
+                activeWindows[windowId] = true;
+                // 高亮任务栏图标
+                highlightTaskbarIcon(windowId);
+            } else {
+                // 已打开则提升层级
+                currentZIndex++;
+                window.style.zIndex = currentZIndex;
+            }
+            // 初始化窗口拖拽
+            initWindowDrag(windowId);
+        }
+
+        // 最小化窗口
+        function minimizeWindow(windowId) {
+            const window = document.getElementById(windowId);
+            window.classList.add('hidden');
+            // 取消任务栏高亮
+            unhighlightTaskbarIcon(windowId);
+        }
+
+        // 最大化窗口
+        function maximizeWindow(windowId) {
+            const window = document.getElementById(windowId);
+            if (window.style.width !== '100%') {
+                // 保存原始尺寸和位置
+                window.dataset.originalWidth = window.style.width;
+                window.dataset.originalHeight = window.style.height;
+                window.dataset.originalTop = window.style.top;
+                window.dataset.originalLeft = window.style.left;
+                // 最大化
+                window.style.width = '100%';
+                window.style.height = 'calc(100% - 56px)';
+                window.style.top = '0';
+                window.style.left = '0';
+                // 切换图标
+                const maximizeBtn = window.querySelector('.fa-expand');
+                if (maximizeBtn) maximizeBtn.classList.replace('fa-expand', 'fa-compress');
+            } else {
+                // 恢复原始尺寸
+                window.style.width = window.dataset.originalWidth || '';
+                window.style.height = window.dataset.originalHeight || '';
+                window.style.top = window.dataset.originalTop || '';
+                window.style.left = window.dataset.originalLeft || '';
+                // 切换图标
+                const compressBtn = window.querySelector('.fa-compress');
+                if (compressBtn) compressBtn.classList.replace('fa-compress', 'fa-expand');
+            }
+        }
+
+        // 关闭窗口
+        function closeWindow(windowId) {
+            const window = document.getElementById(windowId);
+            window.classList.add('hidden');
+            // 移除活动窗口标记
+            delete activeWindows[windowId];
+            // 取消任务栏高亮
+            unhighlightTaskbarIcon(windowId);
+        }
+
+        // 窗口拖拽初始化
+        function initWindowDrag(windowId) {
+            const window = document.getElementById(windowId);
+            const titleBar = window.querySelector('.window-drag');
+            
+            let isDragging = false;
+            let offsetX, offsetY;
+
+            titleBar.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                // 提升窗口层级
+                currentZIndex++;
+                window.style.zIndex = currentZIndex;
+                
+                // 计算偏移量
+                offsetX = e.clientX - window.offsetLeft;
+                offsetY = e.clientY - window.offsetTop;
+                
+                // 阻止默认行为
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                // 移动窗口（非最大化状态）
+                if (window.style.width !== '100%') {
+                    window.style.left = `${e.clientX - offsetX}px`;
+                    window.style.top = `${e.clientY - offsetY}px`;
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+        }
+
+        // 高亮任务栏图标
+        function highlightTaskbarIcon(windowId) {
+            const taskbarIcons = document.querySelectorAll('.taskbar-icon');
+            taskbarIcons.forEach(icon => {
+                if (icon.getAttribute('onclick').includes(windowId)) {
+                    icon.classList.add('taskbar-icon-active');
+                }
+            });
+        }
+
+        // 取消任务栏高亮
+        function unhighlightTaskbarIcon(windowId) {
+            const taskbarIcons = document.querySelectorAll('.taskbar-icon');
+            taskbarIcons.forEach(icon => {
+                if (icon.getAttribute('onclick').includes(windowId)) {
+                    icon.classList.remove('taskbar-icon-active');
+                }
+            });
+        }
+
+        // 浏览器导航
+        function browserNavigate() {
+            const url = document.getElementById('browser-url').value;
+            const content = document.getElementById('browser-content');
+            
+            if (url.includes('baidu')) {
+                content.innerHTML = `
+                    <div class="text-center p-10">
+                        <img src="https://www.baidu.com/img/PCtm_d9c8750bed0b3c7d089fa7d55720d6cf.png" alt="百度logo" class="mx-auto mb-4">
+                        <div class="flex justify-center">
+                            <input type="text" class="w-[500px] px-4 py-2 border border-gray-300 rounded-l-full focus:outline-none focus:border-windows-blue" placeholder="百度一下，你就知道">
+                            <button class="px-6 py-2 bg-windows-blue text-white rounded-r-full hover:bg-windows-blue/90">
+                                百度一下
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (url.includes('github')) {
+                content.innerHTML = `
+                    <div class="text-center p-10">
+                        <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub logo" class="mx-auto mb-4 w-32">
+                        <h2 class="text-2xl font-bold mb-4">GitHub</h2>
+                        <p class="mb-6">面向开源及私有软件项目的托管平台</p>
+                        <button class="px-6 py-2 bg-windows-blue text-white rounded hover:bg-windows-blue/90">
+                            登录 GitHub
+                        </button>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="p-10">
+                        <h2 class="text-2xl font-bold mb-4">模拟网页</h2>
+                        <p>当前访问地址：${url}</p>
+                        <p class="mt-4">这是一个模拟的浏览器页面，仅用于演示</p>
+                    </div>
+                `;
+            }
+        }
+
+        // 记事本保存
+        function saveNotepad() {
+            const content = document.getElementById('notepad-content').value;
+            localStorage.setItem('notepad-content', content);
+            alert('保存成功！内容已存储到本地');
+        }
+
+        // 记事本清空
+        function clearNotepad() {
+            document.getElementById('notepad-content').value = '';
+        }
+
+        // 终端执行命令
+        function terminalExecute() {
+            const input = document.getElementById('terminal-input').value.trim();
+            const content = document.getElementById('terminal-content');
+            
+            if (!input) return;
+            
+            // 添加输入到终端
+            content.innerHTML += `<div>> ${input}</div>`;
+            
+            // 处理命令
+            switch (input.toLowerCase()) {
+                case 'help':
+                    content.innerHTML += `
+                        <div>可用命令：</div>
+                        <div>  - help: 查看帮助</div>
+                        <div>  - clear: 清空终端</div>
+                        <div>  - date: 显示当前时间</div>
+                        <div>  - echo [文本]: 输出文本</div>
+                        <div>  - about: 关于本终端</div>
+                    `;
+                    break;
+                case 'clear':
+                    content.innerHTML = '';
+                    break;
+                case 'date':
+                    content.innerHTML += `<div>${new Date().toLocaleString()}</div>`;
+                    break;
+                case 'about':
+                    content.innerHTML += `<div>模拟终端 v1.0 - 2025</div>`;
+                    break;
+                default:
+                    if (input.toLowerCase().startsWith('echo ')) {
+                        const text = input.substring(5);
+                        content.innerHTML += `<div>${text}</div>`;
+                    } else {
+                        content.innerHTML += `<div>未知命令: ${input} (输入 help 查看帮助)</div>`;
+                    }
+            }
+            
+            // 清空输入框并滚动到底部
+            document.getElementById('terminal-input').value = '';
+            content.scrollTop = content.scrollHeight;
+        }
+
+        // 计算器输入
+        function calcInput(value) {
+            if (value === 'AC') {
+                calcValue = '';
+            } else if (value === 'DEL') {
+                calcValue = calcValue.slice(0, -1);
+            } else {
+                calcValue += value;
+            }
+            document.getElementById('calc-display').value = calcValue;
+        }
+
+        // 计算器计算
+        function calcCalculate() {
+            try {
+                // 替换特殊运算符
+                let expression = calcValue.replace('×', '*').replace('÷', '/').replace('−', '-');
+                const result = eval(expression);
+                calcValue = result.toString();
+                document.getElementById('calc-display').value = calcValue;
+            } catch (error) {
+                document.getElementById('calc-display').value = '错误';
+                calcValue = '';
+            }
+        }
+
+        // 更换桌面背景
+        function changeDesktopBg(url) {
+            document.body.style.backgroundImage = `url('${url}')`;
+        }
+
+        // 更换主题颜色
+        function changeThemeColor(color) {
+            // 更新所有窗口标题栏颜色
+            const titleBars = document.querySelectorAll('.window-drag.bg-windows-blue');
+            titleBars.forEach(bar => {
+                bar.style.backgroundColor = color;
+            });
+            // 更新按钮颜色
+            const buttons = document.querySelectorAll('.bg-windows-blue');
+            buttons.forEach(btn => {
+                btn.style.backgroundColor = color;
+            });
+        }
+
+        // 初始化记事本内容（从本地存储加载）
+        window.onload = function() {
+            const savedContent = localStorage.getItem('notepad-content');
+            if (savedContent) {
+                document.getElementById('notepad-content').value = savedContent;
+            }
+        };
+    </script>
+</body>
+</html>
